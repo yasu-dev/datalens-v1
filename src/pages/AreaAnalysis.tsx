@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import JapanMap from '../components/dashboard/JapanMap';
 import LineChart from '../components/charts/LineChart';
 import BarChart from '../components/charts/BarChart';
 import KpiCard from '../components/dashboard/KpiCard';
-import { Map, Users, Clock, TrendingUp } from 'lucide-react';
+import { Map, Users, Clock, TrendingUp, Navigation, Building, Smartphone } from 'lucide-react';
 import { useFilters } from '../contexts/FilterContext';
 import {
   getFilteredTrafficByTimeData,
   getFilteredDwellTimeData,
-  getFilteredMovementData
+  getFilteredMovementData,
+  getFilteredLocationFlowData
 } from '../data/filteredMockData';
 import { prefectureData } from '../data/storeData';
 import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
@@ -16,6 +16,7 @@ import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipCont
 const AreaAnalysis: React.FC = () => {
   const { filters } = useFilters();
   const [selectedArea, setSelectedArea] = useState<string>('tokyo');
+  const [selectedTab, setSelectedTab] = useState<'traffic' | 'dwell' | 'flow'>('traffic');
   
   // エリアIDから名前を取得する関数を先に定義
   const getAreaName = (id: string): string => {
@@ -50,6 +51,7 @@ const AreaAnalysis: React.FC = () => {
   const trafficByTimeData = useMemo(() => getFilteredTrafficByTimeData(filters), [filters]);
   const dwellTimeData = useMemo(() => getFilteredDwellTimeData(filters), [filters]);
   const movementData = useMemo(() => getFilteredMovementData(filters), [filters]);
+  const locationFlowData = useMemo(() => getFilteredLocationFlowData(filters), [filters]);
   
   // フィルター適用した地域データ生成
   const areaData = useMemo(() => {
@@ -134,13 +136,21 @@ const AreaAnalysis: React.FC = () => {
     // 訪問店舗数
     const visitedStores = parseFloat((3.2 * (0.8 + Math.random() * 0.4)).toFixed(1));
     
+    // モバイル利用率
+    const mobileUsage = Math.round(68 * (0.8 + Math.random() * 0.4));
+    
+    // リピート率
+    const repeatRate = Math.round(42 * (0.8 + Math.random() * 0.4));
+    
     return {
       areaName,
       visitors,
       weekOverWeekChange,
       avgDwellTime,
       peakHour,
-      visitedStores
+      visitedStores,
+      mobileUsage,
+      repeatRate
     };
   }, [selectedArea, filters]);
   
@@ -159,24 +169,135 @@ const AreaAnalysis: React.FC = () => {
       }));
   };
 
+  // タブに対応するコンポーネントをレンダリング
+  const renderTabContent = () => {
+    switch(selectedTab) {
+      case 'traffic':
+        return (
+          <div className="dashboard-card">
+            <div className="mb-4 flex justify-between items-center">
+              <h2 className="card-title">時間帯別トラフィック</h2>
+              <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded">eSIM位置情報利用</span>
+            </div>
+            <LineChart 
+              data={trafficByTimeData}
+              lines={[
+                { dataKey: 'volume', color: '#0066CC', name: '人数' }
+              ]}
+              xAxisDataKey="time"
+              height={250}
+              formatter={(value: ValueType, name: NameType) => `${formatNumber(value as number)} 人`}
+              yAxisUnit="人"
+            />
+            <p className="text-xs text-neutral-500 mt-3">※ 測位精度の限界により、屋内の正確な位置特定には誤差が生じる可能性があります</p>
+          </div>
+        );
+      case 'dwell':
+        return (
+          <div className="dashboard-card">
+            <div className="mb-4 flex justify-between items-center">
+              <h2 className="card-title">エリア別平均滞在時間</h2>
+              <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded">滞在時間分析</span>
+            </div>
+            <BarChart 
+              data={dwellTimeData}
+              dataKey="time"
+              nameKey="area"
+              color="#E53935"
+              height={250}
+              formatter={(value: ValueType, name: NameType) => `${value as number} 分`}
+              yAxisUnit="分"
+            />
+            <div className="mt-3 text-xs text-neutral-500 p-3 bg-neutral-50 rounded-md">
+              <p className="font-medium mb-1">滞在時間検出の仕組み</p>
+              <p>eSIMから取得した位置情報ポイントがある一定時間、特定のエリア内に留まっていることを検出し、統計処理しています。モール内では測位精度の限界から、フロアやゾーン単位での検出が中心となります。</p>
+            </div>
+          </div>
+        );
+      case 'flow':
+        return (
+          <div className="dashboard-card">
+            <div className="mb-4 flex justify-between items-center">
+              <h2 className="card-title">エリア間移動フロー</h2>
+              <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded">移動パターン分析</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-neutral-50 border-b">
+                    <th className="py-3 px-4 text-left text-sm font-medium text-neutral-600">出発エリア</th>
+                    <th className="py-3 px-4 text-left text-sm font-medium text-neutral-600">到着エリア</th>
+                    <th className="py-3 px-4 text-left text-sm font-medium text-neutral-600">移動人数</th>
+                    <th className="py-3 px-4 text-left text-sm font-medium text-neutral-600">移動割合</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locationFlowData.map((flow, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="py-2 px-4 text-sm text-neutral-700">{flow.source}</td>
+                      <td className="py-2 px-4 text-sm text-neutral-700">{flow.target}</td>
+                      <td className="py-2 px-4 text-sm text-neutral-700">{formatNumber(flow.value)}</td>
+                      <td className="py-2 px-4 text-sm text-neutral-700">
+                        <div className="flex items-center">
+                          <div className="w-16 bg-neutral-200 rounded-full h-2 mr-2">
+                            <div 
+                              className="h-2 rounded-full bg-blue-500"
+                              style={{ width: `${flow.percentage}%` }}
+                            ></div>
+                          </div>
+                          <span>{flow.percentage}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 text-xs text-neutral-500">
+              <p>※ 同一ユーザーの連続する位置情報から推定された移動パターンを集計しています</p>
+              <p>※ 短時間の通過は移動としてカウントされない場合があります</p>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <h1 className="text-2xl font-bold text-neutral-800">エリア分析</h1>
+      
+      {/* 位置情報プライバシー通知 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 flex items-start">
+        <div className="text-blue-500 mr-3 mt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <div className="text-sm text-blue-700">
+          <p className="font-medium">エリア分析では、eSIMの位置情報データを活用しています</p>
+          <p>精度の制限により、大まかなゾーン・フロア単位での分析となります。屋内では店舗単位の詳細な特定は困難な場合があります。</p>
+        </div>
+      </div>
       
       {/* 横幅が広いとき用のレイアウト - 地図と4つのカードを横並びに */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Japan Map - 横幅が広いときは左側3カラム */}
         <div className="dashboard-card xl:col-span-3">
           <div className="mb-2">
-            <h2 className="card-title">地域別トラフィック</h2>
-            <p className="text-sm text-neutral-500">エリアをクリックして詳細を表示</p>
+            <h2 className="card-title flex items-center">
+              <Map className="mr-2 text-primary-500" size={20} />
+              地域別トラフィック
+            </h2>
+            <p className="text-sm text-neutral-500">エリアをクリックして詳細を表示 - 現在の選択: <span className="font-medium text-primary-600">{getAreaName(selectedArea)}</span></p>
           </div>
           <div className="flex flex-col h-[360px] justify-between relative">
-            {/* トラフィック情報パネル - 非表示に */}
-            {/* <div className="absolute top-2 right-2 bg-white/90 rounded-md shadow-sm p-2 text-sm border border-neutral-200 z-10">
+            {/* トラフィック情報パネル */}
+            <div className="absolute top-2 right-2 bg-white/90 rounded-md shadow-sm p-2 text-sm border border-neutral-200 z-10">
               <p className="font-medium text-neutral-800">{getAreaName(selectedArea)}</p>
               <p className="text-neutral-600">トラフィック: <span className="font-medium text-primary-600">{areaData[selectedArea]}</span></p>
-            </div> */}
+            </div>
             
             {/* 静的な日本地図表示 */}
             <div className="w-full h-[280px] relative">
@@ -323,7 +444,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('hokkaido')}
                   />
-                  {/* <text x="280" y="90" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.hokkaido}</text> */}
+                  <text x="280" y="90" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.hokkaido}</text>
                   
                   {/* 東京のトラフィック円 */}
                   <circle 
@@ -336,7 +457,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('tokyo')}
                   />
-                  {/* <text x="263" y="235" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.tokyo}</text> */}
+                  <text x="263" y="235" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.tokyo}</text>
                   
                   {/* 神奈川のトラフィック円 */}
                   <circle 
@@ -349,7 +470,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('kanagawa')}
                   />
-                  {/* <text x="258" y="243" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.kanagawa}</text> */}
+                  <text x="258" y="243" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.kanagawa}</text>
                   
                   {/* 千葉のトラフィック円 */}
                   <circle 
@@ -362,7 +483,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('chiba')}
                   />
-                  {/* <text x="270" y="235" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.chiba}</text> */}
+                  <text x="270" y="235" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.chiba}</text>
                   
                   {/* 埼玉のトラフィック円 */}
                   <circle 
@@ -375,7 +496,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('saitama')}
                   />
-                  {/* <text x="252" y="225" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.saitama}</text> */}
+                  <text x="252" y="225" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.saitama}</text>
                   
                   {/* 大阪のトラフィック円 */}
                   <circle 
@@ -388,7 +509,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('osaka')}
                   />
-                  {/* <text x="183" y="287" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.osaka}</text> */}
+                  <text x="183" y="287" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.osaka}</text>
                   
                   {/* 京都のトラフィック円 */}
                   <circle 
@@ -401,7 +522,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('kyoto')}
                   />
-                  {/* <text x="182" y="280" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.kyoto}</text> */}
+                  <text x="182" y="280" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.kyoto}</text>
                   
                   {/* 愛知のトラフィック円 */}
                   <circle 
@@ -414,7 +535,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('aichi')}
                   />
-                  {/* <text x="228" y="275" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.aichi}</text> */}
+                  <text x="228" y="275" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.aichi}</text>
                   
                   {/* 福岡のトラフィック円 */}
                   <circle 
@@ -427,7 +548,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('fukuoka')}
                   />
-                  {/* <text x="95" y="335" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.fukuoka}</text> */}
+                  <text x="95" y="335" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.fukuoka}</text>
                   
                   {/* 兵庫のトラフィック円 */}
                   <circle 
@@ -440,7 +561,7 @@ const AreaAnalysis: React.FC = () => {
                     className="transition-all duration-300"
                     onClick={() => setSelectedArea('hyogo')}
                   />
-                  {/* <text x="165" y="285" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.hyogo}</text> */}
+                  <text x="165" y="285" textAnchor="middle" dominantBaseline="middle" className="text-[12px] fill-white font-bold" style={{ textShadow: '0px 0px 2px #000' }}>{areaData.hyogo}</text>
                 </g>
               </svg>
             </div>
@@ -463,15 +584,15 @@ const AreaAnalysis: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center">
                     <div className="inline-block w-6 h-6 rounded-full bg-blue-500/50 border-2 border-blue-600"></div>
-                    <span className="ml-1">トラフィック少</span>
+                    <span className="ml-1">少</span>
                   </div>
                   <div className="flex items-center">
                     <div className="inline-block w-8 h-8 rounded-full bg-blue-500/50 border-2 border-blue-600"></div>
-                    <span className="ml-1">トラフィック中</span>
+                    <span className="ml-1">中</span>
                   </div>
                   <div className="flex items-center">
                     <div className="inline-block w-10 h-10 rounded-full bg-blue-500/50 border-2 border-blue-600"></div>
-                    <span className="ml-1">トラフィック多</span>
+                    <span className="ml-1">多</span>
                   </div>
                 </div>
               </div>
@@ -482,7 +603,7 @@ const AreaAnalysis: React.FC = () => {
         {/* KPI Cards - 横幅が広いときは右側2カラム、縦に積み重ねる */}
         <div className="xl:col-span-2 grid grid-cols-1 gap-4">
           <KpiCard 
-            title={`来店者数`} 
+            title={`${areaKpiData.areaName}の来店者数`} 
             value={formatNumber(areaKpiData.visitors)}
             change={areaKpiData.weekOverWeekChange}
             trend={areaKpiData.weekOverWeekChange > 0 ? "up" : "down"}
@@ -500,69 +621,56 @@ const AreaAnalysis: React.FC = () => {
           <KpiCard 
             title="ピーク時間帯" 
             value={areaKpiData.peakHour}
-            subtitle="エリア"
+            subtitle="最混雑時間"
             icon={<TrendingUp size={20} className="text-accent-500" />}
           />
           
           <KpiCard 
-            title="訪問店舗数" 
-            value={areaKpiData.visitedStores}
-            subtitle="店舗/訪問"
-            icon={<Map size={20} className="text-warning-500" />}
+            title="eSIM活用率" 
+            value={areaKpiData.mobileUsage}
+            isPercentage={true}
+            icon={<Smartphone size={20} className="text-warning-500" />}
           />
         </div>
       </div>
       
-      {/* Area Detail Charts - 通常のレイアウト */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Traffic by Time of Day for Selected Area */}
-        <div className="dashboard-card">
-          <div className="mb-4">
-            <h2 className="card-title">時間帯別トラフィック</h2>
-          </div>
-          <LineChart 
-            data={trafficByTimeData}
-            lines={[
-              { dataKey: 'volume', color: '#0066CC', name: '人数' }
-            ]}
-            xAxisDataKey="time"
-            height={250}
-            formatter={(value: ValueType, name: NameType) => `${formatNumber(value as number)} 人`}
-            yAxisUnit="人"
-          />
-        </div>
-        
-        {/* Movement from Entrance to Different Areas */}
-        <div className="dashboard-card">
-          <div className="mb-4">
-            <h2 className="card-title">エントランスからの移動先</h2>
-          </div>
-          <BarChart 
-            data={getMovementData()}
-            dataKey="volume"
-            nameKey="area"
-            color="#00BF80"
-            height={250}
-            formatter={(value: ValueType, name: NameType) => `${formatNumber(value as number)} 人`}
-            yAxisUnit="人"
-          />
+      {/* タブ切り替え */}
+      <div className="border-b border-neutral-200">
+        <div className="flex -mb-px">
+          <button 
+            className={`px-4 py-2 mr-2 text-sm font-medium ${selectedTab === 'traffic' ? 'text-primary-600 border-b-2 border-primary-500' : 'text-neutral-600 hover:text-primary-600'}`}
+            onClick={() => setSelectedTab('traffic')}
+          >
+            トラフィック分析
+          </button>
+          <button 
+            className={`px-4 py-2 mr-2 text-sm font-medium ${selectedTab === 'dwell' ? 'text-primary-600 border-b-2 border-primary-500' : 'text-neutral-600 hover:text-primary-600'}`}
+            onClick={() => setSelectedTab('dwell')}
+          >
+            滞在時間分析
+          </button>
+          <button 
+            className={`px-4 py-2 mr-2 text-sm font-medium ${selectedTab === 'flow' ? 'text-primary-600 border-b-2 border-primary-500' : 'text-neutral-600 hover:text-primary-600'}`}
+            onClick={() => setSelectedTab('flow')}
+          >
+            移動フロー分析
+          </button>
         </div>
       </div>
       
-      {/* Area Dwell Time Comparison */}
-      <div className="dashboard-card">
-        <div className="mb-4">
-          <h2 className="card-title">エリア別平均滞在時間比較</h2>
-        </div>
-        <BarChart 
-          data={dwellTimeData}
-          dataKey="time"
-          nameKey="area"
-          color="#E53935"
-          height={250}
-          formatter={(value: ValueType, name: NameType) => `${value as number} 分`}
-          yAxisUnit="分"
-        />
+      {/* タブコンテンツ */}
+      {renderTabContent()}
+      
+      {/* 補足情報 */}
+      <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-100 text-sm">
+        <h3 className="font-medium text-neutral-800 mb-2">位置情報データの活用に関する注意点</h3>
+        <ul className="list-disc list-inside space-y-1 text-neutral-700">
+          <li>屋内測位精度の限界により、詳細な店舗単位の位置特定は困難な場合があります</li>
+          <li>Wi-Fiアクセスポイントやビーコンとの併用で、屋内測位精度の向上が可能です</li>
+          <li>データはユーザー同意に基づき匿名化・統計処理されています</li>
+          <li>短時間の滞在や通過はノイズ除去のため集計対象外となる場合があります</li>
+          <li>データの取得頻度はバッテリー消費を考慮して適切に設定されています</li>
+        </ul>
       </div>
     </div>
   );

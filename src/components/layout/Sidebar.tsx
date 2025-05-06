@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Store, Map, Users, TrendingUp, BarChart4 } from 'lucide-react';
+import { Store, Map, Users, TrendingUp, BarChart4, ShieldCheck } from 'lucide-react';
 
 interface SidebarProps {
   closeSidebar: () => void;
@@ -66,6 +66,28 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
             </li>
           ))}
         </ul>
+        
+        <div className="mt-6 pt-6 border-t border-neutral-200 px-2">
+          <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider px-3 mb-2">設定</h3>
+          <ul>
+            <li className="mb-1">
+              <NavLink
+                to="/privacy-settings"
+                onClick={closeSidebar}
+                className={({ isActive }) =>
+                  `flex items-center px-3 py-2.5 rounded-md transition-colors ${
+                    isActive
+                      ? 'bg-primary-50 text-primary-600 font-medium'
+                      : 'text-neutral-600 hover:bg-neutral-100'
+                  }`
+                }
+              >
+                <span className="mr-3"><ShieldCheck size={20} /></span>
+                <span>プライバシー設定</span>
+              </NavLink>
+            </li>
+          </ul>
+        </div>
       </nav>
     </div>
   );

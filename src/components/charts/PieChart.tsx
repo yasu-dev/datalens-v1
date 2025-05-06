@@ -29,6 +29,7 @@ interface PieChartProps {
   showTooltip?: boolean;
   showLegend?: boolean;
   formatter?: (value: any) => string;
+  onSliceClick?: (entry: any) => void;
 }
 
 const COLORS = [
@@ -119,6 +120,7 @@ const PieChart: React.FC<PieChartProps> = ({
   showTooltip = true,
   showLegend = true,
   formatter,
+  onSliceClick,
 }) => {
   // 異なるコンテナサイズでも一貫した見た目を実現するため、内径と外径の比率を一定に保つ
   const chartRatio = 0.9; // チャートが占める比率
@@ -128,6 +130,13 @@ const PieChart: React.FC<PieChartProps> = ({
   const calculatedOuterRadius = Math.min(height * 0.35, outerRadius);
   // 比率を維持した内径を計算
   const calculatedInnerRadius = calculatedOuterRadius * innerRadiusRatio;
+  
+  // クリックイベントハンドラ
+  const handleClick = (data: any, index: number, e: React.MouseEvent) => {
+    if (onSliceClick) {
+      onSliceClick(data);
+    }
+  };
   
   return (
     <div className={`w-full ${className}`} style={{ height: height }}>
@@ -147,6 +156,8 @@ const PieChart: React.FC<PieChartProps> = ({
             animationDuration={800}
             animationEasing="ease-out"
             paddingAngle={2}
+            onClick={onSliceClick ? handleClick : undefined}
+            className={onSliceClick ? "cursor-pointer" : ""}
           >
             {data.map((entry, index) => (
               <Cell 

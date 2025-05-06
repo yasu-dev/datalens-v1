@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import AreaAnalysis from './pages/AreaAnalysis';
 import CustomerSegments from './pages/CustomerSegments';
 import TrendsAnalysis from './pages/TrendsAnalysis';
+import PrivacySettings from './pages/PrivacySettings';
 import { FilterProvider } from './contexts/FilterContext';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
             <Route path="area-analysis" element={<AreaAnalysis />} />
             <Route path="customer-segments" element={<CustomerSegments />} />
             <Route path="trends" element={<TrendsAnalysis />} />
+            <Route path="privacy-settings" element={<PrivacySettings />} />
           </Route>
         </Routes>
       </FilterProvider>

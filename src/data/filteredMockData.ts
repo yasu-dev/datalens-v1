@@ -300,4 +300,58 @@ export const getFilteredJourneyStagesData = (filters: FilterState) => {
     ...item,
     percentage: parseFloat(((item.count / baseCount) * 100).toFixed(1))
   }));
+};
+
+// 訪問頻度データを取得（フィルター適用済み）
+export const getFilteredVisitFrequencyData = (filters: any) => {
+  const baseData = [
+    { name: '初回', value: 38, color: '#42A5F5' },
+    { name: '月1回未満', value: 22, color: '#66BB6A' },
+    { name: '月1-3回', value: 28, color: '#FFA726' },
+    { name: '週1回以上', value: 12, color: '#EF5350' }
+  ];
+  
+  // フィルター適用（簡易的なランダムバリエーション）
+  return baseData.map(item => {
+    const variation = Math.random() * 0.2 - 0.1; // -10%〜+10%のランダム変動
+    return {
+      ...item,
+      value: Math.round(item.value * (1 + variation))
+    };
+  });
+};
+
+// エリア間移動フローデータを取得（フィルター適用済み）
+export interface LocationFlow {
+  source: string;
+  target: string;
+  value: number;
+  percentage: number;
+}
+
+export const getFilteredLocationFlowData = (filters: FilterState): LocationFlow[] => {
+  const impact = getOverallFilterImpact(filters);
+  
+  // 基本データ
+  const baseData: LocationFlow[] = [
+    { source: 'エントランス', target: 'フードコート', value: 1250, percentage: 42 },
+    { source: 'アパレル', target: 'フードコート', value: 980, percentage: 33 },
+    { source: 'エントランス', target: 'アパレル', value: 830, percentage: 28 },
+    { source: 'フードコート', target: 'キッズ', value: 650, percentage: 22 },
+    { source: 'アパレル', target: 'キッズ', value: 520, percentage: 18 },
+    { source: 'エントランス', target: '雑貨', value: 480, percentage: 16 },
+    { source: 'フードコート', target: 'アパレル', value: 420, percentage: 14 }
+  ];
+  
+  // フィルターを適用してデータを変動させる
+  return baseData.map(flow => {
+    const variation = getRandomVariation(1, VARIATION_FACTOR.MEDIUM);
+    const newValue = Math.round(flow.value * impact * variation);
+    
+    return {
+      ...flow,
+      value: newValue,
+      percentage: Math.round(flow.percentage * variation)
+    };
+  });
 }; 
