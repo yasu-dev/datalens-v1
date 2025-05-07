@@ -154,14 +154,11 @@ const Dashboard: React.FC = () => {
           <div className="mb-4 flex justify-between items-center">
             <h2 className="card-title">訪問頻度分布</h2>
           </div>
-          <BarChart 
-            data={visitFrequencyData}
-            dataKey="visitors"
-            nameKey="frequency"
-            color="#00BF80"
-            height={250}
-            formatter={(value: ValueType, name: NameType) => `${formatNumber(value as number)} 人`}
-            yAxisUnit="人"
+          <img 
+            src="/map_distribution.jpg" 
+            alt="訪問頻度分布" 
+            className="w-full"
+            style={{ height: '250px', objectFit: 'cover' }}
           />
         </div>
       </div>

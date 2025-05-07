@@ -22,7 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
     },
     {
       label: '顧客セグメント',
-      path: '/customer-segments',
+      path: '/customer-segmentation',
       icon: <Users size={20} />,
     },
     {
