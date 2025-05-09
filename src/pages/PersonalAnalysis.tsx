@@ -313,12 +313,12 @@ const PersonalAnalysis: React.FC = () => {
       {/* 詳細データセクション */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 左側: 顧客行動タイムライン */}
-        <div className={`${cardStyle} max-h-[600px] overflow-auto`}>
+        <div className={`${cardStyle} flex flex-col min-h-[40rem] h-full`}>
           <h2 className={titleStyle}>行動タイムライン</h2>
           <p className="text-sm text-neutral-500 mb-4">来店・移動・購買の時系列データ</p>
           
           {timelineData && timelineData.length > 0 ? (
-            <div className="max-h-[500px] overflow-y-auto pr-2">
+            <div className="flex-grow overflow-y-auto pr-2">
               {timelineData.map((dayData, dayIndex) => (
                 <div key={dayIndex} className="mb-8">
                   <div className="flex items-center mb-3">
@@ -353,8 +353,8 @@ const PersonalAnalysis: React.FC = () => {
             <p className="text-neutral-500">タイムラインデータがありません</p>
           )}
         </div>
-        
-        {/* 右側: 滞在時間・予測・レコメンデーション */}
+          
+        {/* 右側: 滞在時間・予測 */}
         <div className="space-y-6">
           {/* 滞在時間トレンド */}
           <div className={cardStyle}>
@@ -370,7 +370,7 @@ const PersonalAnalysis: React.FC = () => {
           </div>
           
           {/* 将来予測 */}
-          <div className={`${cardStyle} max-h-[600px] overflow-auto`}>
+          <div className={`${cardStyle}`}>
             <h2 className={titleStyle}>行動予測</h2>
             <p className="text-sm text-neutral-500 mb-4">過去のパターンに基づく来店・購買予測</p>
             
@@ -453,7 +453,7 @@ const PersonalAnalysis: React.FC = () => {
       </div>
       
       {/* パーソナライズド・レコメンデーション */}
-      <div className={`${cardStyle} max-h-[600px] overflow-auto`}>
+      <div className={`${cardStyle} mt-6`}>
         <h2 className={titleStyle}>パーソナライズド・レコメンデーション</h2>
         <p className="text-sm text-neutral-500 mb-4">この顧客に最適化されたおすすめ情報</p>
         
